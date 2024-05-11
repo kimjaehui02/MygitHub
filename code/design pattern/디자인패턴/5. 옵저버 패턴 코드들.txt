@@ -1,0 +1,248 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class StaminaSubject : MonoBehaviour
+{
+    /// <summary>
+    /// 최대 스태미너
+    /// </summary>
+    public float floatOfMaxStamina;
+    /// <summary>
+    /// 현재 스태미너
+    /// </summary>
+    public float floatOfStamina;
+    /// <summary>
+    /// 스테미너들의 옵저버 리스트
+    /// </summary>
+    public List<StaminaObserver> listStaminaObserverOfObserver;
+
+    /// <summary>
+    /// 옵저버 리스트에 등록시킵니다
+    /// </summary>
+    /// <param name="observer"></param>
+    public void RegisterObserver(StaminaObserver observer)
+    {
+        // 옵저버 리스트에 옵저버를 추가합니다
+        listStaminaObserverOfObserver.Add(observer);
+    }
+
+    public void RemoveObserver(StaminaObserver observer)
+    {
+        // 옵저버 리스트에 옵저버를 제거합니다
+        listStaminaObserverOfObserver.Remove(observer);
+    }
+
+    public void NotifyObservers()
+    {
+        foreach (var observer in listStaminaObserverOfObserver)
+        {
+            observer.OnStaminaChanged(floatOfStamina, floatOfMaxStamina); // 옵저버들에게 스태미너 변경을 알림
+        }
+    }
+
+    public void ConsumeStamina(float amount)
+    {
+        floatOfStamina -= amount; // 스태미너 소비
+        if (floatOfStamina < 0)
+        {
+            floatOfStamina = 0; // 스태미너가 0보다 작으면 0으로 설정
+        }
+
+        NotifyObservers(); // 옵저버들에게 스태미너 변경을 알림
+    }
+
+    public void RestoreStamina(float amount)
+    {
+        floatOfStamina += amount; // 스태미너 회복
+        if (floatOfStamina > floatOfMaxStamina)
+        {
+            floatOfStamina = floatOfMaxStamina; // 스태미너가 최대 스태미너를 초과하면 최대 스태미너로 설정
+        }
+
+        NotifyObservers(); // 옵저버들에게 스태미너 변경을 알림
+    }
+
+
+}
+
+public interface IStaminaObserver
+{
+    void OnStaminaChanged(float floatOfStamina, float floatOfMaxStamina);
+}
+
+using UnityEngine;
+
+public class StaminaObserver : MonoBehaviour, IStaminaObserver
+{
+    public GameObject gameObjectOfStamina; // 스태미너를 나타낼 게임 오브젝트
+
+    private StaminaSubject staminaSubjectOfStamina;
+
+    private void Start()
+    {
+        StaminaStart(); // 스태미너 초기화
+    }
+
+    private void Update()
+    {
+        Debugging();
+    }
+
+    private void StaminaStart()
+    {
+        staminaSubjectOfStamina = FindObjectOfType<StaminaSubject>(); // StaminaSubject 컴포넌트 찾기
+        staminaSubjectOfStamina.RegisterObserver(this); // 옵저버 등록
+
+        UpdateStaminaState(); // 스태미너 상태 업데이트
+    }
+
+    public void OnStaminaChanged(float currentStamina, float maxStamina)
+    {
+        // 가로 길이를 스태미너 수치에 맞게 조절
+        float scaleFactor = currentStamina / maxStamina; // 현재 스태미너와 최대 스태미너의 비율 계산
+        Debug.Log(scaleFactor);
+        Vector3 scale = gameObjectOfStamina.transform.localScale; // 게임 오브젝트의 스케일을 가져옴
+        scale.x = scaleFactor; // 스케일의 x 값을 비율에 맞게 설정
+        gameObjectOfStamina.transform.localScale = scale; // 스케일을 적용하여 스태미너 표시 업데이트
+    }
+
+    private void UpdateStaminaState()
+    {
+        float currentStamina = staminaSubjectOfStamina.floatOfStamina; // 현재 스태미너 값 가져오기
+        float maxStamina = staminaSubjectOfStamina.floatOfMaxStamina; // 최대 스태미너 값 가져오기
+
+        // 가로 길이를 스태미너 수치에 맞게 조절
+        float scaleFactor = currentStamina / maxStamina; // 현재 스태미너와 최대 스태미너의 비율 계산
+        Vector3 scale = gameObjectOfStamina.transform.localScale; // 게임 오브젝트의 스케일을 가져옴
+        scale.x = scaleFactor; // 스케일의 x 값을 비율에 맞게 설정
+        gameObjectOfStamina.transform.localScale = scale; // 스케일을 적용하여 스태미너 표시 업데이트
+    }
+
+    public void Debugging()
+    {
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            staminaSubjectOfStamina.ConsumeStamina(10); // 스태미너 감소
+        }
+        else if (Input.GetKeyDown(KeyCode.Y))
+        {
+            staminaSubjectOfStamina.RestoreStamina(10); // 스태미너 증가
+        }
+    }
+}
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class HealthSubject : MonoBehaviour
+{
+    /// <summary>
+    /// 최대 체력
+    /// </summary>
+    public int intOfMaxHealth;
+    /// <summary>
+    /// 현재 체력
+    /// </summary>
+    public int intOftHealth;
+    public List<IHealthObserver> ListOfobservers;
+
+
+    public void RegisterObserver(IHealthObserver observer)
+    {
+        ListOfobservers.Add(observer);
+    }
+
+    public void RemoveObserver(IHealthObserver observer)
+    {
+        ListOfobservers.Remove(observer);
+    }
+
+    public void NotifyObservers()
+    {
+        foreach (var observer in ListOfobservers)
+        {
+            observer.OnHealthChanged(intOftHealth, intOfMaxHealth);
+        }
+    }
+
+    public void TakeDamage(int damage)
+    {
+        intOftHealth -= damage;
+        if (intOftHealth < 0)
+        {
+            intOftHealth = 0;
+        }
+
+
+        NotifyObservers();
+    }
+
+    public void Heal(int amount)
+    {
+        intOftHealth += amount;
+        if (intOftHealth > intOfMaxHealth)
+        {
+            intOftHealth = intOfMaxHealth;
+        }
+
+
+        NotifyObservers();
+    }
+}
+
+public interface IHealthObserver
+{
+    void OnHealthChanged(int currentHealth, int maxHealth);
+}
+
+using UnityEngine;
+
+public class HpObserver : MonoBehaviour, IHealthObserver
+{
+    public GameObject[] hpObjects; // Hp를 표시할 게임 오브젝트들
+
+    private HealthSubject healthSubject;
+
+    private void Awake()
+    {
+        healthSubject = FindObjectOfType<HealthSubject>();
+        if (healthSubject != null)
+        {
+            healthSubject.RegisterObserver(this);
+            UpdateHealthObjects(healthSubject.intOftHealth);
+        }
+    }
+
+    public void OnHealthChanged(int currentHealth, int maxHealth)
+    {
+        UpdateHealthObjects(currentHealth);
+    }
+
+    private void UpdateHealthObjects(int currentHealth)
+    {
+        for (int i = 0; i < hpObjects.Length; i++)
+        {
+            if (i < currentHealth)
+            {
+                hpObjects[i].SetActive(true);
+            }
+            else
+            {
+                hpObjects[i].SetActive(false);
+            }
+        }
+    }
+
+    public void SetSubject(HealthSubject subject)
+    {
+        healthSubject = subject;
+        if (healthSubject != null)
+        {
+            healthSubject.RegisterObserver(this);
+            UpdateHealthObjects(healthSubject.intOftHealth);
+        }
+    }
+}
+

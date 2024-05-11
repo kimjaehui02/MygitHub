@@ -1,0 +1,208 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PlayerMovement : MonoBehaviour
+{
+    public float MovementSpeed = 5f;
+    public float SprintScale = 1.5f;
+    public float HungerConsumptionRate = 1f; // 허기 소모량 비율
+
+    private ICommand pickupItemCommand;
+    private ICommand pickupBoxCommand;
+
+    public bool isSprinting = false;
+    public bool MoveStop = false;
+    public bool isPickup;
+    public bool isOpen; // 상자 오픈 가능한지
+
+    public UIScript UItext;
+    public Inventory inventory;
+    public MultipleChoice ChoiceUI;
+
+    public float h;
+    public float v;
+    private Vector3 vel;
+
+    public Rigidbody rigid;
+    public Animator Anim;
+
+    public LayerMask ItemLayer;
+    public GameObject ItemObject;
+
+    public GameObject BoxObject;
+    public BoxScript Box;
+
+    private void Start()
+    {
+        rigid = GetComponent<Rigidbody>();
+        UItext = FindObjectOfType<UIScript>();
+        inventory = FindObjectOfType<Inventory>();
+        ChoiceUI = FindObjectOfType<MultipleChoice>();
+
+        // 커맨드 초기화
+        pickupItemCommand = new PickupItemCommand(this);
+        pickupBoxCommand = new PickupBoxCommand(this);
+    }
+
+    private void Update()
+    {
+        if (MoveStop == false)
+        {
+            h = Input.GetAxisRaw("Horizontal");
+            v = Input.GetAxisRaw("Vertical");
+
+            vel = new Vector3(h, 0, v).normalized * MovementSpeed;
+
+            if (Input.GetKeyDown(KeyCode.LeftShift))
+            {
+                isSprinting = !isSprinting;
+            }
+
+            if (isSprinting)
+            {
+                rigid.velocity = vel * SprintScale;
+            }
+            else
+            {
+                rigid.velocity = vel;
+            }
+
+            if (Input.GetKeyDown(KeyCode.E))
+            {
+                // 커맨드 실행
+                pickupItemCommand.Execute();
+                pickupBoxCommand.Execute();
+            }
+        }
+
+        if (h != 0 || v != 0)
+        {
+            Anim.SetBool("IsWalking", true);
+            Quaternion targetRotation = Quaternion.LookRotation(new Vector3(h, 0, v));
+            gameObject2.transform.rotation = Quaternion.Lerp(gameObject2.transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
+        }
+        else
+        {
+            Anim.SetBool("IsWalking", false);
+        }
+    }
+
+    public GameObject gameObject2;
+    public float rotationSpeed;
+
+    public void StopMove()
+    {
+        MoveStop = !MoveStop;
+    }
+
+    private void OnTriggerEnter(Collider collision)
+    {
+        if (collision.gameObject.CompareTag("Item"))
+        {
+            isPickup = true;
+            ItemObject = collision.gameObject;
+            UItext.Interaction = collision.GetComponent<ItemScript>().item.ItemName;
+        }
+        if (collision.gameObject.CompareTag("House"))
+        {
+            inventory.isBuild = true;
+            UItext.Interaction = collision.GetComponent<House>().HouseName;
+        }
+        if (collision.gameObject.CompareTag("Box"))
+        {
+            isOpen = true;
+            BoxObject = collision.gameObject;
+            UItext.Interaction = collision.GetComponent<BoxScript>().BoxName;
+        }
+    }
+
+    private void OnTriggerExit(Collider collision)
+    {
+        if (collision.gameObject.CompareTag("Item"))
+        {
+            isPickup = false;
+            ItemObject = null;
+            UItext.Interaction = "";
+        }
+        if (collision.gameObject.CompareTag("House"))
+        {
+            inventory.isBuild = false;
+            UItext.Interaction = "";
+        }
+        if (collision.gameObject.CompareTag("Box"))
+        {
+            isOpen = false;
+            UItext.Interaction = "";
+        }
+    }
+
+    public void ExecutePickupItem()
+    {
+        if (isPickup)
+        {
+            SoundManager.SharedInstance.PlaySE("Picking");
+            vel = new Vector3(0, 0, 0).normalized * 0;
+            rigid.velocity = vel * 0;
+            MoveStop = true;
+            StartCoroutine(PickingItem(ItemObject.transform.GetComponent<ItemScript>().item.GettingTime, ItemObject.transform.GetComponent<ItemScript>().item));
+            isPickup = false;
+            UItext.Interaction = "채칩중...";
+        }
+    }
+
+    public void ExecutePickupBox()
+    {
+        if (isOpen)
+        {
+            Box = BoxObject.transform.GetComponent<BoxScript>();
+            UItext.Interaction = "";
+            ChoiceUI.ChoiceOn(Box);
+            isOpen = false;
+        }
+    }
+
+    private IEnumerator PickingItem(float gettingtime, Items items)
+    {
+        yield return new WaitForSeconds(gettingtime);
+        inventory.GetItem(items);
+        Destroy(ItemObject);
+        UItext.Interaction = "";
+        MoveStop = false;
+    }
+}
+
+public interface ICommand
+{
+    void Execute();
+}
+
+public class PickupItemCommand : ICommand
+{
+    private PlayerMovement playerMovement;
+
+    public PickupItemCommand(PlayerMovement playerMovement)
+    {
+        this.playerMovement = playerMovement;
+    }
+
+    public void Execute()
+    {
+        playerMovement.ExecutePickupItem();
+    }
+}
+
+public class PickupBoxCommand : ICommand
+{
+    private PlayerMovement playerMovement;
+
+    public PickupBoxCommand(PlayerMovement playerMovement)
+    {
+        this.playerMovement = playerMovement;
+    }
+
+    public void Execute()
+    {
+        playerMovement.ExecutePickupBox();
+    }
+}

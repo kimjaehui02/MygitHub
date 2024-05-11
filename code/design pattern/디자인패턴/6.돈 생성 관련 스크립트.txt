@@ -1,0 +1,78 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class MoneyManager : MonoBehaviour
+{
+    public BattleSceneManager B_S_M;
+    public PlayerManager PlayerTransform;
+    public Rigidbody2D rigid;
+    public int MoneyPoint;
+    Vector2 vector3;
+    public bool ReadyPla;
+
+    private void Awake()
+    {
+        B_S_M = GameObject.FindWithTag("B_S_M").GetComponent<BattleSceneManager>();
+        rigid = GetComponent<Rigidbody2D>();
+        PlayerTransform = GameObject.FindWithTag("Player").GetComponent<PlayerManager>();
+        ReadyPla = false;
+    }
+
+    private void FixedUpdate()
+    {
+        GoToPl();
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.tag == "Player")
+        {
+            MoneysGone();
+        }
+    }
+
+    public void MoneysGone()
+    {
+        B_S_M.GetMoney(MoneyPoint);
+        MoneyPoint = 0;
+        gameObject.SetActive(false);
+    }
+
+    public void RanOut()
+    {
+        Vector2 dirVec = transform.position;
+        Vector2 ranVec = new Vector2(Random.Range(-0.5f, 0.5f), Random.Range(0f, 2f));
+        dirVec += ranVec;
+        rigid.AddForce(dirVec.normalized * 3.5f, ForceMode2D.Impulse);
+        if (gameObject.activeSelf == true)
+        {
+            Invoke("Stop", 0.15f);
+        }
+    }
+
+    private void Stop()
+    {
+        rigid.velocity = Vector2.zero;
+        if (gameObject.activeSelf == true)
+        {
+            Invoke("ReadyToGo", 0.6f);
+        }
+    }
+
+    private void ReadyToGo()
+    {
+        ReadyPla = true;
+    }
+
+    private void GoToPl()
+    {
+        if (ReadyPla == false)
+        {
+            return;
+        }
+        vector3 = PlayerTransform.transform.position - (transform.position);
+        rigid.velocity = Vector2.zero;
+        rigid.AddForce(vector3.normalized * 350 * Time.deltaTime, ForceMode2D.Impulse);
+    }
+}
